@@ -11,7 +11,9 @@ import uuid
 # Import our modules
 from models import db, Claim, ClaimItem, EXPENSE_GROUPS, CURRENCIES
 from forms import ClaimForm, ClaimItemForm, ReportForm, EditClaimForm
-from utils import save_uploaded_file, generate_isd_reimbursement_csv, generate_financial_expense_csv, create_receipts_zip
+from utils import (save_uploaded_file, generate_isd_reimbursement_csv, generate_financial_expense_csv, 
+                   create_receipts_zip, get_available_claims, generate_multi_claim_isd_reports,
+                   generate_multi_claim_financial_csv, create_multi_report_zip)
 
 
 def create_app():
@@ -317,34 +319,84 @@ def reports():
     from utils import get_available_months
     
     form = ReportForm()
-    # Populate month_year choices dynamically
+    
+    # Get all available claims for the multi-select field
+    form.selected_claims.choices = get_available_claims()
+    
+    # Populate month_year choices dynamically (for legacy single-month reports)
     form.month_year.choices = get_available_months()
     
     if form.validate_on_submit():
         report_type = form.report_type.data
-        month_year = form.month_year.data
         
         try:
-            if report_type == 'isd_reimbursement':
-                # Generate ISD Reimbursement CSV
-                csv_content = generate_isd_reimbursement_csv(month_year)
-                response = make_response(csv_content)
-                response.headers['Content-Type'] = 'text/csv'
-                response.headers['Content-Disposition'] = f'attachment; filename=isd_reimbursement_{month_year.replace("-", "_")}.csv'
-                return response
+            # Handle multi-claim reports
+            if form.selected_claims.data:  # If claims are selected
+                claim_ids = [int(claim_id) for claim_id in form.selected_claims.data]
                 
-            elif report_type == 'financial_expense':
-                # Generate Financial Expense CSV
-                csv_content = generate_financial_expense_csv(month_year)
-                response = make_response(csv_content)
-                response.headers['Content-Type'] = 'text/csv'
-                response.headers['Content-Disposition'] = f'attachment; filename=financial_expense_{month_year.replace("-", "_")}.csv'
-                return response
+                if report_type == 'comprehensive_report':
+                    # Generate comprehensive ZIP with ISD reports per month, combined financial, and receipts
+                    zip_path = create_multi_report_zip(claim_ids)
+                    return send_file(zip_path, as_attachment=True, 
+                                   download_name=f'comprehensive_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip')
+                    
+                elif report_type == 'multi_isd_reimbursement':
+                    # Generate separate ISD reports per month
+                    isd_reports = generate_multi_claim_isd_reports(claim_ids)
+                    if len(isd_reports) == 1:
+                        # Single month, return CSV directly
+                        month_key = list(isd_reports.keys())[0]
+                        report_data = isd_reports[month_key]
+                        response = make_response(report_data['content'])
+                        response.headers['Content-Type'] = 'text/csv'
+                        response.headers['Content-Disposition'] = f'attachment; filename={report_data["filename"]}'
+                        return response
+                    else:
+                        # Multiple months, create ZIP
+                        import tempfile
+                        import zipfile
+                        
+                        zip_path = f"isd_reports_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+                        with zipfile.ZipFile(zip_path, 'w') as zip_file:
+                            for month_key, report_data in isd_reports.items():
+                                zip_file.writestr(report_data['filename'], report_data['content'])
+                        
+                        return send_file(zip_path, as_attachment=True, download_name=f'isd_reports_multi.zip')
+                        
+                elif report_type == 'multi_financial_expense':
+                    # Generate combined financial report
+                    csv_content = generate_multi_claim_financial_csv(claim_ids)
+                    response = make_response(csv_content)
+                    response.headers['Content-Type'] = 'text/csv'
+                    response.headers['Content-Disposition'] = f'attachment; filename=financial_expense_combined_{datetime.now().strftime("%Y%m%d")}.csv'
+                    return response
+                    
+            # Handle legacy single-month reports (if month_year is selected and no claims selected)
+            elif form.month_year.data:
+                month_year = form.month_year.data
                 
-            elif report_type == 'receipts_export':
-                # Generate receipts ZIP
-                zip_path = create_receipts_zip(month_year, app.config['UPLOAD_FOLDER'])
-                return send_file(zip_path, as_attachment=True, download_name=f'receipts_{month_year.replace("-", "_")}.zip')
+                if report_type == 'isd_reimbursement':
+                    # Generate ISD Reimbursement CSV
+                    csv_content = generate_isd_reimbursement_csv(month_year)
+                    response = make_response(csv_content)
+                    response.headers['Content-Type'] = 'text/csv'
+                    response.headers['Content-Disposition'] = f'attachment; filename=isd_reimbursement_{month_year.replace("-", "_")}.csv'
+                    return response
+                    
+                elif report_type == 'financial_expense':
+                    # Generate Financial Expense CSV
+                    csv_content = generate_financial_expense_csv(month_year)
+                    response = make_response(csv_content)
+                    response.headers['Content-Type'] = 'text/csv'
+                    response.headers['Content-Disposition'] = f'attachment; filename=financial_expense_{month_year.replace("-", "_")}.csv'
+                    return response
+                    
+                elif report_type == 'receipts_export':
+                    # Generate receipts ZIP
+                    zip_path = create_receipts_zip(month_year, app.config['UPLOAD_FOLDER'])
+                    return send_file(zip_path, as_attachment=True, download_name=f'receipts_{month_year.replace("-", "_")}.zip')
+            else:
+                flash('Please select either specific claims or a month/year for the report.', 'error')
                 
         except Exception as e:
             flash(f'Error generating report: {str(e)}', 'error')

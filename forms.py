@@ -3,10 +3,17 @@ Forms for the Reimbursement Application using WTForms
 """
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileRequired, FileAllowed
-from wtforms import StringField, DecimalField, DateField, TextAreaField, SelectField, SubmitField
+from wtforms import StringField, DecimalField, DateField, TextAreaField, SelectField, SubmitField, SelectMultipleField
 from wtforms.validators import DataRequired, NumberRange, Optional, Length
+from wtforms.widgets import CheckboxInput, ListWidget
 from datetime import date
 from models import EXPENSE_GROUPS, CURRENCIES
+
+
+class MultiCheckboxField(SelectMultipleField):
+    """Custom field for multiple checkboxes"""
+    widget = ListWidget(prefix_label=False)
+    option_widget = CheckboxInput()
 
 
 class ClaimForm(FlaskForm):
@@ -73,18 +80,28 @@ class ClaimItemForm(FlaskForm):
 
 
 class ReportForm(FlaskForm):
-    """Form for generating reports"""
+    """Form for generating reports with claim selection"""
     report_type = SelectField('Report Type', 
                              choices=[
-                                 ('isd_reimbursement', 'ISD Reimbursement Form (Items)'),
-                                 ('financial_expense', 'Financial Office Expense Form (Claims)'),
+                                 ('comprehensive_report', 'Comprehensive Report (ISD per month + Combined Financial + Receipts)'),
+                                 ('multi_isd_reimbursement', 'ISD Reimbursement Forms (Separate per month)'),
+                                 ('multi_financial_expense', 'Financial Office Expense Form (Combined)'),
+                                 ('isd_reimbursement', 'ISD Reimbursement Form (Single month)'),
+                                 ('financial_expense', 'Financial Office Expense Form (Single month)'),
                                  ('receipts_export', 'Receipts Export (ZIP)')
                              ], 
                              validators=[DataRequired()])
-    # Month and year will be dynamically populated based on available data
-    month_year = SelectField('Select Month/Year', 
-                            choices=[], 
-                            validators=[DataRequired()])
+    
+    # Multi-claim selection (for new functionality)
+    selected_claims = MultiCheckboxField('Select Claims', 
+                                       choices=[], 
+                                       validators=[Optional()])
+    
+    # Legacy month/year selection (for backward compatibility)
+    month_year = SelectField('Month/Year (for single month reports)', 
+                           choices=[], 
+                           validators=[Optional()])
+    
     submit = SubmitField('Generate Report')
 
 
