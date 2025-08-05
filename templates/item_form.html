@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}Add Items - Claim {{ claim.claim_id[:8] }}... - Reimbursement System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Claim Summary Sidebar -->
+    <div class="col-lg-4">
+        <div class="card sticky-top" style="top: 1rem;">
+            <div class="card-header">
+                <h6 class="mb-0">📋 Claim Summary</h6>
+            </div>
+            <div class="card-body">
+                <p><strong>Claim ID:</strong><br>
+                <code>{{ claim.claim_id[:8] }}...</code></p>
+                <p><strong>Period:</strong><br>
+                {{ claim.from_date.strftime('%Y-%m-%d') }} to {{ claim.to_date.strftime('%Y-%m-%d') }}</p>
+                <p><strong>Total Amount:</strong><br>
+                {{ "%.2f"|format(claim.total_amount) }} {{ claim.total_currency }}</p>
+                <p><strong>Business Purpose:</strong><br>
+                <small>{{ claim.business_purpose[:100] }}{% if claim.business_purpose|length > 100 %}...{% endif %}</small></p>
+                
+                {% if items %}
+                <hr>
+                <h6>Added Items ({{ items|length }})</h6>
+                <div class="list-group list-group-flush">
+                    {% for item in items %}
+                    <div class="list-group-item px-0 py-2">
+                        <div class="d-flex justify-content-between">
+                            <small class="fw-bold">{{ item.description[:30] }}{% if item.description|length > 30 %}...{% endif %}</small>
+                            <small class="text-muted">{{ "%.2f"|format(item.amount) }} {{ item.currency }}</small>
+                        </div>
+                        <small class="text-muted">{{ item.expense_group }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="mt-2 pt-2 border-top">
+                    <strong>Items Total: {{ "%.2f"|format(items|sum(attribute='amount')) }} HKD</strong>
+                    {% set items_total = items|sum(attribute='amount') %}
+                    {% if items_total != claim.total_amount %}
+                    <div class="text-warning">
+                        <small>⚠️ Items total ({{ "%.2f"|format(items_total) }}) differs from claim total ({{ "%.2f"|format(claim.total_amount) }})</small>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Item Form -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">➕ Add Expense Items</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info" role="alert">
+                    <strong>Next Step:</strong> Break down your expenses into individual items from the receipt.
+                </div>
+
+                <form method="POST" class="needs-validation" novalidate>
+                    {{ form.hidden_tag() }}
+                    
+                    <!-- Item Description -->
+                    <div class="mb-3">
+                        {{ form.description.label(class="form-label") }}
+                        <span class="required">*</span>
+                        {{ form.description(class="form-control", placeholder="e.g., Taxi fare, Business lunch, Hotel accommodation") }}
+                        {% if form.description.errors %}
+                            <div class="text-danger">
+                                {% for error in form.description.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Amount and Currency -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.amount.label(class="form-label") }}
+                                <span class="required">*</span>
+                                <div class="input-group">
+                                    {{ form.amount(class="form-control", step="0.01") }}
+                                    {{ form.currency(class="form-select") }}
+                                </div>
+                                {% if form.amount.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.amount.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.paid_amount.label(class="form-label") }}
+                                <small class="text-muted">(Optional)</small>
+                                <div class="input-group">
+                                    {{ form.paid_amount(class="form-control", step="0.01", placeholder="If different currency") }}
+                                    {{ form.paid_currency(class="form-select") }}
+                                </div>
+                                {% if form.paid_amount.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.paid_amount.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Expense Group -->
+                    <div class="mb-3">
+                        {{ form.expense_group.label(class="form-label") }}
+                        <span class="required">*</span>
+                        {{ form.expense_group(class="form-select") }}
+                        {% if form.expense_group.errors %}
+                            <div class="text-danger">
+                                {% for error in form.expense_group.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Justification -->
+                    <div class="mb-4">
+                        {{ form.justification.label(class="form-label") }}
+                        <small class="text-muted">(Optional)</small>
+                        {{ form.justification(class="form-control", rows="3", placeholder="Additional details or justification for this expense...") }}
+                        {% if form.justification.errors %}
+                            <div class="text-danger">
+                                {% for error in form.justification.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        {{ form.add_item(class="btn btn-secondary me-md-2") }}
+                        {{ form.add_another(class="btn btn-primary me-md-2") }}
+                        {% if items %}
+                        {{ form.finish(class="btn btn-success") }}
+                        {% else %}
+                        <button type="button" class="btn btn-success" disabled data-bs-toggle="tooltip" title="Add at least one item first">
+                            Finish & View Summary
+                        </button>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Existing Items List (if any) -->
+        {% if items %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0">📊 Added Items</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th>Amount</th>
+                                <th>Category</th>
+                                <th>Added</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in items %}
+                            <tr>
+                                <td>
+                                    {{ item.description }}
+                                    {% if item.justification %}
+                                    <br><small class="text-muted">{{ item.justification[:50] }}{% if item.justification|length > 50 %}...{% endif %}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ "%.2f"|format(item.amount) }} {{ item.currency }}
+                                    {% if item.paid_amount and item.paid_amount != item.amount %}
+                                    <br><small class="text-muted">Paid: {{ "%.2f"|format(item.paid_amount) }} {{ item.paid_currency }}</small>
+                                    {% endif %}
+                                </td>
+                                <td><span class="badge bg-secondary">{{ item.expense_group }}</span></td>
+                                <td><small class="text-muted">{{ item.created_at.strftime('%H:%M') }}</small></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Help Section -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h6 class="card-title">💡 Tips for Adding Items</h6>
+                <ul class="list-unstyled">
+                    <li>✅ Be specific in your descriptions (e.g., "Taxi from office to client meeting")</li>
+                    <li>✅ Select appropriate expense categories for easier processing</li>
+                    <li>✅ Add justification for unusual or high-value expenses</li>
+                    <li>✅ Use "Add Item & Add Another" to quickly add multiple items</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+
+    // Auto-calculate running total
+    function updateRunningTotal() {
+        const itemsTotal = {{ items|sum(attribute='amount')|default(0) }};
+        const claimTotal = {{ claim.total_amount }};
+        const difference = Math.abs(itemsTotal - claimTotal);
+        
+        if (difference > 0.01) {
+            console.log('Total mismatch detected:', itemsTotal, 'vs', claimTotal);
+        }
+    }
+
+    // Clear form after successful submission (when redirecting back to same page)
+    {% if request.method == 'POST' %}
+    setTimeout(() => {
+        const form = document.querySelector('form');
+        if (form) {
+            // Clear text inputs but keep default selections
+            form.querySelectorAll('input[type="text"], input[type="number"], textarea').forEach(input => {
+                if (!input.hasAttribute('readonly')) {
+                    input.value = '';
+                }
+            });
+            // Reset focus to first field
+            const firstInput = form.querySelector('input, textarea, select');
+            if (firstInput) firstInput.focus();
+        }
+    }, 100);
+    {% endif %}
+</script>
+{% endblock %}
