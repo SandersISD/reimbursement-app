@@ -41,16 +41,16 @@
                         
                         <!-- Report Type Descriptions -->
                         <div class="mt-3">
-                            <div class="report-description" data-type="comprehensive_report">
+                            <div class="report-description" data-type="comprehensive_excel_report">
                                 <div class="alert alert-primary">
-                                    <h6><i class="bi bi-archive"></i> Comprehensive Report (All-in-One ZIP)</h6>
-                                    <p class="mb-0">Generates a complete ZIP file containing: separate ISD Reimbursement forms per month, combined Financial Office Expense report, and all receipts renamed as "uuid_Attachment01". Perfect for complete submissions.</p>
+                                    <h6><i class="bi bi-archive"></i> Comprehensive Excel Report (All-in-One ZIP)</h6>
+                                    <p class="mb-0">Generates a complete ZIP file containing: separate Excel ISD Reimbursement forms per month using the professional template, combined Financial Office Expense report, and all receipts renamed as "uuid_Attachment01". Perfect for complete submissions with professional formatting.</p>
                                 </div>
                             </div>
-                            <div class="report-description" data-type="multi_isd_reimbursement" style="display: none;">
+                            <div class="report-description" data-type="multi_isd_excel" style="display: none;">
                                 <div class="alert alert-success">
-                                    <h6><i class="bi bi-file-earmark-spreadsheet"></i> ISD Reimbursement Forms (Separate per month)</h6>
-                                    <p class="mb-0">Generates separate ISD Reimbursement CSV files for each month that contains selected claims. Each file contains individual expense items for that month only.</p>
+                                    <h6><i class="bi bi-file-earmark-excel"></i> ISD Reimbursement Forms (Separate per month)</h6>
+                                    <p class="mb-0">Generates separate ISD Reimbursement Excel files for each month that contains selected claims. Each file uses the professional ISD template with proper formatting, multiple currency support, and month-by-month organization.</p>
                                 </div>
                             </div>
                             <div class="report-description" data-type="multi_financial_expense" style="display: none;">
@@ -61,9 +61,9 @@
                             </div>
                             <div class="report-description" data-type="isd_reimbursement" style="display: none;">
                                 <div class="alert alert-light">
-                                    <h6><i class="bi bi-info-circle"></i> ISD Reimbursement Form (Single month)</h6>
-                                    <p class="mb-0">Generates a CSV file with individual expense items for the selected month only. 
-                                    Includes columns for receipt order, payment date, particulars, amounts by currency, expense group, alias name, and receipt status.</p>
+                                    <h6><i class="bi bi-file-earmark-excel"></i> ISD Reimbursement Form - Excel (Single month)</h6>
+                                    <p class="mb-0">Generates a professional Excel file using the ISD template with individual expense items for the selected month. 
+                                    Features proper formatting, multi-currency columns, automatic totals, and template-based layout suitable for official submission.</p>
                                 </div>
                             </div>
                             <div class="report-description" data-type="financial_expense" style="display: none;">
@@ -261,8 +261,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (mode === 'claims') {
             // Multi-claim options
             const options = [
-                ['comprehensive_report', 'Comprehensive Report (ISD per month + Combined Financial + Receipts)'],
-                ['multi_isd_reimbursement', 'ISD Reimbursement Forms (Separate per month)'],
+                ['comprehensive_excel_report', 'Comprehensive Excel Report (ISD per month + Combined Financial + Receipts)'],
+                ['multi_isd_excel', 'ISD Reimbursement Forms - Excel (Separate per month)'],
                 ['multi_financial_expense', 'Financial Office Expense Form (Combined)']
             ];
             options.forEach(([value, text]) => {
@@ -273,11 +273,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 select.appendChild(option);
             });
             // Default to comprehensive if current value not available
-            if (!select.value) select.value = 'comprehensive_report';
+            if (!select.value) select.value = 'comprehensive_excel_report';
         } else {
             // Single-month options
             const options = [
-                ['isd_reimbursement', 'ISD Reimbursement Form (Single month)'],
+                ['isd_reimbursement', 'ISD Reimbursement Form - Excel (Single month)'],
                 ['financial_expense', 'Financial Office Expense Form (Single month)'],
                 ['receipts_export', 'Receipts Export (ZIP)']
             ];

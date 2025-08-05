@@ -15,10 +15,10 @@ A complete Python-based local web application for handling employee reimbursemen
 
 ### 📊 Reporting & Export
 - **Smart Month Detection**: Automatically detects which months have expense data
-- **ISD Reimbursement Form**: CSV export of items by month with expense groups and alias names
+- **ISD Reimbursement Form**: Professional Excel export using official template with multi-month support, automatic totals, and professional formatting
 - **Financial Office Export**: CSV export of claims with comprehensive details
 - **Receipt Archive**: ZIP export of all receipts with organized naming including alias names
-- **Multiple Export Formats**: CSV and ZIP file generation
+- **Multiple Export Formats**: Excel and CSV file generation with comprehensive ZIP bundles
 
 ### 🎨 User Interface
 - **Responsive Design**: Bootstrap-based UI that works on all devices

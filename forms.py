@@ -83,10 +83,10 @@ class ReportForm(FlaskForm):
     """Form for generating reports with claim selection"""
     report_type = SelectField('Report Type', 
                              choices=[
-                                 ('comprehensive_report', 'Comprehensive Report (ISD per month + Combined Financial + Receipts)'),
-                                 ('multi_isd_reimbursement', 'ISD Reimbursement Forms (Separate per month)'),
+                                 ('comprehensive_excel_report', 'Comprehensive Excel Report (Excel ISD per month + Combined Financial + Receipts)'),
+                                 ('multi_isd_excel', 'ISD Reimbursement Forms - Excel (Separate per month)'),
                                  ('multi_financial_expense', 'Financial Office Expense Form (Combined)'),
-                                 ('isd_reimbursement', 'ISD Reimbursement Form (Single month)'),
+                                 ('isd_reimbursement', 'ISD Reimbursement Form - Excel (Single month)'),
                                  ('financial_expense', 'Financial Office Expense Form (Single month)'),
                                  ('receipts_export', 'Receipts Export (ZIP)')
                              ], 

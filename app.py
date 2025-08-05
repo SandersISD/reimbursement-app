@@ -11,9 +11,11 @@ import uuid
 # Import our modules
 from models import db, Claim, ClaimItem, EXPENSE_GROUPS, CURRENCIES
 from forms import ClaimForm, ClaimItemForm, ReportForm, EditClaimForm
-from utils import (save_uploaded_file, generate_isd_reimbursement_csv, generate_financial_expense_csv, 
+from utils import (save_uploaded_file, generate_financial_expense_csv, 
                    create_receipts_zip, get_available_claims, generate_multi_claim_isd_reports,
-                   generate_multi_claim_financial_csv, create_multi_report_zip)
+                   generate_multi_claim_financial_csv, create_multi_report_zip,
+                   generate_multi_claim_excel_reports, create_multi_report_excel_zip,
+                   generate_excel_isd_report)
 
 
 def create_app():
@@ -175,13 +177,15 @@ def claims_list():
 @app.route('/claim/<claim_id>')
 def view_claim(claim_id):
     """View individual claim details"""
+    from decimal import Decimal
+    
     claim = Claim.query.get_or_404(claim_id)
     items = ClaimItem.query.filter_by(claim_id=claim_id).order_by(ClaimItem.created_at).all()
     
-    # Calculate totals for validation
-    items_total = sum(float(item.amount) for item in items)
-    claim_total = float(claim.total_amount)
-    amounts_match = abs(items_total - claim_total) < 0.01
+    # Calculate totals for validation using Decimal to match claim.total_amount type
+    items_total = sum(Decimal(str(item.amount)) for item in items)
+    claim_total = claim.total_amount
+    amounts_match = abs(items_total - claim_total) < Decimal('0.01')
     
     return render_template('view_claim.html', 
                          claim=claim, 
@@ -332,23 +336,23 @@ def reports():
         try:
             # Handle multi-claim reports
             if form.selected_claims.data:  # If claims are selected
-                claim_ids = [int(claim_id) for claim_id in form.selected_claims.data]
+                claim_ids = form.selected_claims.data  # Keep as strings since claim_ids are UUIDs
                 
-                if report_type == 'comprehensive_report':
-                    # Generate comprehensive ZIP with ISD reports per month, combined financial, and receipts
-                    zip_path = create_multi_report_zip(claim_ids)
+                if report_type == 'comprehensive_excel_report':
+                    # Generate comprehensive ZIP with Excel ISD reports per month, combined financial, and receipts
+                    zip_path = create_multi_report_excel_zip(claim_ids)
                     return send_file(zip_path, as_attachment=True, 
-                                   download_name=f'comprehensive_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip')
+                                   download_name=f'comprehensive_excel_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip')
                     
-                elif report_type == 'multi_isd_reimbursement':
-                    # Generate separate ISD reports per month
-                    isd_reports = generate_multi_claim_isd_reports(claim_ids)
-                    if len(isd_reports) == 1:
-                        # Single month, return CSV directly
-                        month_key = list(isd_reports.keys())[0]
-                        report_data = isd_reports[month_key]
+                elif report_type == 'multi_isd_excel':
+                    # Generate separate ISD reports per month (Excel format)
+                    excel_reports = generate_multi_claim_excel_reports(claim_ids)
+                    if len(excel_reports) == 1:
+                        # Single month, return Excel directly
+                        month_key = list(excel_reports.keys())[0]
+                        report_data = excel_reports[month_key]
                         response = make_response(report_data['content'])
-                        response.headers['Content-Type'] = 'text/csv'
+                        response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                         response.headers['Content-Disposition'] = f'attachment; filename={report_data["filename"]}'
                         return response
                     else:
@@ -356,12 +360,12 @@ def reports():
                         import tempfile
                         import zipfile
                         
-                        zip_path = f"isd_reports_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+                        zip_path = f"isd_excel_reports_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
                         with zipfile.ZipFile(zip_path, 'w') as zip_file:
-                            for month_key, report_data in isd_reports.items():
+                            for month_key, report_data in excel_reports.items():
                                 zip_file.writestr(report_data['filename'], report_data['content'])
                         
-                        return send_file(zip_path, as_attachment=True, download_name=f'isd_reports_multi.zip')
+                        return send_file(zip_path, as_attachment=True, download_name=f'isd_excel_reports_multi.zip')
                         
                 elif report_type == 'multi_financial_expense':
                     # Generate combined financial report
@@ -376,12 +380,15 @@ def reports():
                 month_year = form.month_year.data
                 
                 if report_type == 'isd_reimbursement':
-                    # Generate ISD Reimbursement CSV
-                    csv_content = generate_isd_reimbursement_csv(month_year)
-                    response = make_response(csv_content)
-                    response.headers['Content-Type'] = 'text/csv'
-                    response.headers['Content-Disposition'] = f'attachment; filename=isd_reimbursement_{month_year.replace("-", "_")}.csv'
-                    return response
+                    # Generate ISD Reimbursement Excel
+                    excel_content = generate_excel_isd_report(month_year)
+                    if excel_content:
+                        response = make_response(excel_content)
+                        response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                        response.headers['Content-Disposition'] = f'attachment; filename=isd_reimbursement_{month_year.replace("-", "_")}.xlsx'
+                        return response
+                    else:
+                        flash('No data found for the selected month or error generating Excel report.', 'error')
                     
                 elif report_type == 'financial_expense':
                     # Generate Financial Expense CSV
