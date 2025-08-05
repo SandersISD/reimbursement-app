@@ -1,95 +1,92 @@
 """
-Database models for the Reimbursement Management System.
+Database models for the Reimbursement Application
 """
-import uuid
-from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
+import uuid
 
 db = SQLAlchemy()
 
+
 class Claim(db.Model):
-    """Main reimbursement claim model."""
+    """Main claim model for reimbursement requests"""
     __tablename__ = 'claims'
     
-    # Primary key using UUID
     claim_id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    
-    # Date range for expenses
+    alias_name = db.Column(db.String(100), nullable=True)  # User-defined alias for the claim
     from_date = db.Column(db.Date, nullable=False)
     to_date = db.Column(db.Date, nullable=False)
-    
-    # Total amounts and currencies
     total_amount = db.Column(db.Numeric(10, 2), nullable=False)
     total_currency = db.Column(db.String(3), nullable=False, default='HKD')
     paid_amount = db.Column(db.Numeric(10, 2), nullable=True)
     paid_currency = db.Column(db.String(3), nullable=True)
-    
-    # Business purpose and file upload
+    expense_group = db.Column(db.String(50), nullable=False)  # Moved from ClaimItem to Claim
     business_purpose = db.Column(db.Text, nullable=False)
     upload_file_path = db.Column(db.String(255), nullable=False)
-    
-    # Timestamps and user tracking
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    user_id = db.Column(db.String(50), nullable=False, default='dummy_user')  # For future user authentication
+    user_id = db.Column(db.String(50), nullable=False, default='default_user')  # Hardcoded for now
     
-    # Relationship to claim items
+    # Relationship with claim items
     items = db.relationship('ClaimItem', backref='claim', lazy=True, cascade='all, delete-orphan')
     
     def __repr__(self):
         return f'<Claim {self.claim_id}>'
     
-    @property
-    def total_items_amount(self):
-        """Calculate total amount from all items."""
+    def get_total_items_amount(self):
+        """Calculate total amount from all items"""
         return sum(item.amount for item in self.items)
     
-    @property
-    def items_count(self):
-        """Get count of items in this claim."""
-        return len(self.items)
+    def amounts_match(self):
+        """Check if total claim amount matches sum of item amounts"""
+        return float(self.total_amount) == float(self.get_total_items_amount())
+
 
 class ClaimItem(db.Model):
-    """Individual items within a reimbursement claim."""
+    """Individual items within a claim"""
     __tablename__ = 'claim_items'
     
-    # Primary key
-    item_id = db.Column(db.Integer, primary_key=True)
-    
-    # Foreign key to claim
+    item_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     claim_id = db.Column(db.String(36), db.ForeignKey('claims.claim_id'), nullable=False)
-    
-    # Item details
     description = db.Column(db.String(255), nullable=False)
     amount = db.Column(db.Numeric(10, 2), nullable=False)
     currency = db.Column(db.String(3), nullable=False, default='HKD')
     paid_amount = db.Column(db.Numeric(10, 2), nullable=True)
     paid_currency = db.Column(db.String(3), nullable=True)
-    
-    # Categorization
-    expense_group = db.Column(db.String(50), nullable=False)
     justification = db.Column(db.Text, nullable=True)
-    
-    # Timestamp
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     
     def __repr__(self):
         return f'<ClaimItem {self.item_id}: {self.description}>'
 
-# Predefined expense groups
+
+# Constants for the application
 EXPENSE_GROUPS = [
-    ('Travel', 'Travel'),
-    ('Meals', 'Meals'),
-    ('Office Supplies', 'Office Supplies'),
-    ('Training', 'Training'),
-    ('Other', 'Other')
+    ('Airfare', 'Airfare'),
+    ('Books/Journals', 'Books/Journals'),
+    ('Computer', 'Computer'),
+    ('Delivery/Courier/Postage', 'Delivery/Courier/Postage'),
+    ('Equipement', 'Equipement'),
+    ('Ferry/Train (Overseas)', 'Ferry/Train (Overseas)'),
+    ('Furniture & Fixture', 'Furniture & Fixture'),
+    ('General Consumables', 'General Consumables'),
+    ('Hotel', 'Hotel'),
+    ('Lab Consumables/Electronic Components', 'Lab Consumables/Electronic Components'),
+    ('Meal', 'Meal'),
+    ('Membership Fee', 'Membership Fee'),
+    ('Mobile Phone/Portable Electronic Device', 'Mobile Phone/Portable Electronic Device'),
+    ('Others', 'Others'),
+    ('Patent Fee', 'Patent Fee'),
+    ('Publication/Submission Fee', 'Publication/Submission Fee'),
+    ('Registration/Conference/Visa Fee', 'Registration/Conference/Visa Fee'),
+    ('Rental Fee', 'Rental Fee'),
+    ('Service Fee', 'Service Fee')
 ]
 
-# Supported currencies
 CURRENCIES = [
-    ('HKD', 'Hong Kong Dollar (HKD)'),
-    ('USD', 'US Dollar (USD)'),
-    ('EUR', 'Euro (EUR)'),
-    ('GBP', 'British Pound (GBP)'),
-    ('JPY', 'Japanese Yen (JPY)'),
-    ('CNY', 'Chinese Yuan (CNY)'),
+    ('HKD', 'HKD'),
+    ('USD', 'USD'),
+    ('EUR', 'EUR'),
+    ('RMB', 'RMB'),
+    ('GBP', 'GBP'),
+    ('JPY', 'JPY')
 ]

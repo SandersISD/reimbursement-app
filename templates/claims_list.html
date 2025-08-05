@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}All Claims - Reimbursement System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-list-ul"></i> All Claims</h1>
+            <a href="{{ url_for('new_claim') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> New Claim
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if claims.items %}
+    <!-- Claims Table -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-table"></i> Claims List
+                <span class="badge bg-secondary">{{ claims.total }} total</span>
+            </h5>
+            <div class="btn-group btn-group-sm">
+                <a href="{{ url_for('reports') }}" class="btn btn-outline-info">
+                    <i class="bi bi-file-earmark-text"></i> Reports
+                </a>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Claim ID</th>
+                            <th>Alias / Group</th>
+                            <th>Date Range</th>
+                            <th>Total Amount</th>
+                            <th>Business Purpose</th>
+                            <th>Items</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for claim in claims.items %}
+                            <tr>
+                                <td>
+                                    <code class="text-primary">{{ claim.claim_id[:8] }}...</code>
+                                    <br><small class="text-muted">{{ claim.claim_id[24:] }}</small>
+                                </td>
+                                <td>
+                                    {% if claim.alias_name %}
+                                        <strong class="text-success">{{ claim.alias_name }}</strong>
+                                        <br>
+                                    {% endif %}
+                                    <span class="badge bg-primary">{{ claim.expense_group }}</span>
+                                </td>
+                                <td>
+                                    <strong>{{ claim.from_date.strftime('%m/%d/%Y') }}</strong>
+                                    {% if claim.from_date != claim.to_date %}
+                                        <br><small class="text-muted">to {{ claim.to_date.strftime('%m/%d/%Y') }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong class="text-primary">{{ claim.total_currency }} {{ "%.2f"|format(claim.total_amount) }}</strong>
+                                    {% if claim.paid_amount and claim.paid_amount != claim.total_amount %}
+                                        <br><small class="text-muted">Paid: {{ claim.paid_currency }} {{ "%.2f"|format(claim.paid_amount) }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span title="{{ claim.business_purpose }}">
+                                        {{ claim.business_purpose[:60] }}{% if claim.business_purpose|length > 60 %}...{% endif %}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-secondary">{{ claim.items|length }}</span>
+                                    {% if claim.items %}
+                                        {% set items_total = claim.items|sum(attribute='amount') %}
+                                        <br><small class="text-muted">{{ claim.total_currency }} {{ "%.2f"|format(items_total) }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if claim.items %}
+                                        {% set items_total = claim.items|sum(attribute='amount') %}
+                                        {% set amounts_match = (claim.total_amount - items_total)|abs < 0.01 %}
+                                        {% if amounts_match %}
+                                            <span class="badge bg-success">Complete</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Mismatch</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-secondary">No Items</span>
+                                    {% endif %}
+                                    
+                                    {% if claim.upload_file_path %}
+                                        <br><small class="text-success">
+                                            <i class="bi bi-file-earmark-check"></i> Receipt
+                                        </small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        {{ claim.created_at.strftime('%m/%d/%Y') }}
+                                        <br>{{ claim.created_at.strftime('%I:%M %p') }}
+                                    </small>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('view_claim', claim_id=claim.claim_id) }}" 
+                                           class="btn btn-outline-primary" title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="{{ url_for('edit_claim', claim_id=claim.claim_id) }}" 
+                                           class="btn btn-outline-secondary" title="Edit Claim">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a href="{{ url_for('add_items', claim_id=claim.claim_id) }}" 
+                                           class="btn btn-outline-info" title="Manage Items">
+                                            <i class="bi bi-list-ul"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if claims.pages > 1 %}
+        <nav aria-label="Claims pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if claims.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('claims_list', page=claims.prev_num) }}">
+                            <i class="bi bi-chevron-left"></i> Previous
+                        </a>
+                    </li>
+                {% endif %}
+                
+                {% for page_num in claims.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num != claims.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('claims_list', page=page_num) }}">{{ page_num }}</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                        {% endif %}
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if claims.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('claims_list', page=claims.next_num) }}">
+                            Next <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+        
+        <div class="text-center text-muted small">
+            Showing {{ claims.per_page * (claims.page - 1) + 1 }} - 
+            {{ claims.per_page * (claims.page - 1) + claims.items|length }} of {{ claims.total }} claims
+        </div>
+    {% endif %}
+
+    <!-- Summary Statistics -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card border-info">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Summary Statistics</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <h4 class="text-primary">{{ claims.total }}</h4>
+                            <p class="text-muted mb-0">Total Claims</p>
+                        </div>
+                        <div class="col-md-3">
+                            {% set complete_claims = claims.items|selectattr('items')|list %}
+                            {% set complete_count = complete_claims|length %}
+                            <h4 class="text-success">{{ complete_count }}</h4>
+                            <p class="text-muted mb-0">With Items</p>
+                        </div>
+                        <div class="col-md-3">
+                            {% set total_amount = claims.items|sum(attribute='total_amount') %}
+                            <h4 class="text-info">${{ "%.2f"|format(total_amount) }}</h4>
+                            <p class="text-muted mb-0">Total Amount</p>
+                        </div>
+                        <div class="col-md-3">
+                            {% set avg_amount = total_amount / claims.total if claims.total > 0 else 0 %}
+                            <h4 class="text-warning">${{ "%.2f"|format(avg_amount) }}</h4>
+                            <p class="text-muted mb-0">Average Amount</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% else %}
+    <!-- Empty State -->
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-inbox fs-1 text-muted"></i>
+            <h3 class="text-muted mt-3">No Claims Found</h3>
+            <p class="text-muted">You haven't created any reimbursement claims yet.</p>
+            <a href="{{ url_for('new_claim') }}" class="btn btn-primary btn-lg">
+                <i class="bi bi-plus-circle"></i> Create Your First Claim
+            </a>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Quick Actions -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card border-secondary">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bi bi-lightning"></i> Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="d-grid">
+                            <a href="{{ url_for('new_claim') }}" class="btn btn-outline-primary">
+                                <i class="bi bi-plus-circle"></i> New Claim
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-grid">
+                            <a href="{{ url_for('reports') }}" class="btn btn-outline-info">
+                                <i class="bi bi-file-earmark-text"></i> Generate Reports
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-grid">
+                            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-house"></i> Dashboard
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-grid">
+                            <button onclick="window.location.reload()" class="btn btn-outline-success">
+                                <i class="bi bi-arrow-clockwise"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

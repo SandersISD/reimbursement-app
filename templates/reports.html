@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - Reimbursement System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-file-earmark-text"></i> Generate Reports</h1>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-house"></i> Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <!-- Report Generation Form -->
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-download"></i> Export Data</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    
+                    <!-- Report Type -->
+                    <div class="mb-4">
+                        <label for="{{ form.report_type.id }}" class="form-label">
+                            {{ form.report_type.label.text }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.report_type(class="form-select") }}
+                        {% if form.report_type.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.report_type.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        
+                        <!-- Report Type Descriptions -->
+                        <div class="mt-3">
+                            <div class="report-description" data-type="isd_reimbursement">
+                                <div class="alert alert-light">
+                                    <h6><i class="bi bi-info-circle"></i> ISD Reimbursement Form (Items)</h6>
+                                    <p class="mb-0">Generates a CSV file with individual expense items for the selected month. 
+                                    Includes columns for receipt order, payment date, particulars, amounts by currency, expense group, alias name, and receipt status.</p>
+                                </div>
+                            </div>
+                            <div class="report-description" data-type="financial_expense" style="display: none;">
+                                <div class="alert alert-light">
+                                    <h6><i class="bi bi-info-circle"></i> Financial Office Expense Form (Claims)</h6>
+                                    <p class="mb-0">Generates a CSV file with one row per claim for the selected month. 
+                                    Includes dates, combined descriptions, amounts, expense groups, alias names, and claim UUIDs.</p>
+                                </div>
+                            </div>
+                            <div class="report-description" data-type="receipts_export" style="display: none;">
+                                <div class="alert alert-light">
+                                    <h6><i class="bi bi-info-circle"></i> Receipts Export (ZIP)</h6>
+                                    <p class="mb-0">Creates a ZIP file containing all receipt files for the selected month. 
+                                    Files are renamed to include the alias name and claim UUID for easy identification.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Month and Year Selection -->
+                    <div class="mb-4">
+                        <label for="{{ form.month_year.id }}" class="form-label">
+                            {{ form.month_year.label.text }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.month_year(class="form-select") }}
+                        {% if form.month_year.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.month_year.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">
+                            Only months with existing expense claims are shown.
+                            {% if not form.month_year.choices %}
+                                <span class="text-warning">No expense data found. Please create some claims first.</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="d-grid">
+                        {% if form.month_year.choices %}
+                            {{ form.submit(class="btn btn-primary btn-lg") }}
+                        {% else %}
+                            <button type="button" class="btn btn-secondary btn-lg" disabled>
+                                No Data Available
+                            </button>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="d-grid">
+                            <a href="{{ url_for('claims_list') }}" class="btn btn-outline-primary">
+                                <i class="bi bi-list-ul"></i> View All Claims
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-grid">
+                            <a href="{{ url_for('new_claim') }}" class="btn btn-success">
+                                <i class="bi bi-plus-circle"></i> New Claim
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const reportTypeSelect = document.getElementById('{{ form.report_type.id }}');
+    const descriptions = document.querySelectorAll('.report-description');
+    
+    function showDescription() {
+        descriptions.forEach(desc => desc.style.display = 'none');
+        const selectedType = reportTypeSelect.value;
+        const targetDesc = document.querySelector(`[data-type="${selectedType}"]`);
+        if (targetDesc) {
+            targetDesc.style.display = 'block';
+        }
+    }
+    
+    // Show initial description
+    showDescription();
+    
+    // Update description when selection changes
+    reportTypeSelect.addEventListener('change', showDescription);
+    
+    // Form submission handling
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const reportType = reportTypeSelect.value;
+            const monthYear = document.getElementById('{{ form.month_year.id }}').value;
+            
+            if (!monthYear) {
+                e.preventDefault();
+                alert('Please select a month/year to generate the report.');
+                return;
+            }
+            
+            // Show loading state
+            const submitBtn = document.querySelector('button[type="submit"], input[type="submit"]');
+            if (submitBtn) {
+                const originalText = submitBtn.innerHTML || submitBtn.value;
+                if (submitBtn.tagName === 'BUTTON') {
+                    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Generating...';
+                } else {
+                    submitBtn.value = 'Generating...';
+                }
+                submitBtn.disabled = true;
+                
+                // Reset button after a delay (in case of errors)
+                setTimeout(function() {
+                    if (submitBtn.tagName === 'BUTTON') {
+                        submitBtn.innerHTML = originalText;
+                    } else {
+                        submitBtn.value = originalText;
+                    }
+                    submitBtn.disabled = false;
+                }, 10000);
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Report Information -->
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card border-info">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-lightbulb"></i> Report Information</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6>ISD Reimbursement Form</h6>
+                                <ul class="small text-muted mb-0">
+                                    <li>One row per expense item</li>
+                                    <li>Grouped by currency (HKD, RMB, Others)</li>
+                                    <li>Sequential receipt numbering</li>
+                                    <li>Receipt attachment status</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>Financial Expense Form</h6>
+                                <ul class="small text-muted mb-0">
+                                    <li>One row per claim</li>
+                                    <li>Combined item descriptions</li>
+                                    <li>Grouped expense categories</li>
+                                    <li>Unique claim identifiers</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>Receipts Export</h6>
+                                <ul class="small text-muted mb-0">
+                                    <li>ZIP file with all receipts</li>
+                                    <li>Files named with claim UUIDs</li>
+                                    <li>Organized by date range</li>
+                                    <li>Preserves original formats</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Usage Instructions -->
+        <div class="card mt-4 border-success">
+            <div class="card-header bg-success text-white">
+                <h6 class="mb-0"><i class="bi bi-question-circle"></i> How to Use Reports</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>For Accounting Department:</h6>
+                        <ol class="small">
+                            <li>Generate <strong>Financial Expense Form</strong> for claim summaries</li>
+                            <li>Use the UUID to cross-reference with detailed records</li>
+                            <li>Export receipts ZIP for documentation</li>
+                            <li>Import CSV data into accounting software</li>
+                        </ol>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>For Employee Reimbursement:</h6>
+                        <ol class="small">
+                            <li>Generate <strong>ISD Reimbursement Form</strong> for submissions</li>
+                            <li>Print or email the CSV to HR/Finance</li>
+                            <li>Include receipt ZIP as supporting documentation</li>
+                            <li>Keep claim UUIDs for tracking purposes</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-clock-history"></i> Quick Stats</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <!-- You would need to pass these stats from the view -->
+                        <h4 class="text-primary">-</h4>
+                        <p class="text-muted small mb-0">Total Claims</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h4 class="text-success">-</h4>
+                        <p class="text-muted small mb-0">This Month</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h4 class="text-info">-</h4>
+                        <p class="text-muted small mb-0">Total Items</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h4 class="text-warning">-</h4>
+                        <p class="text-muted small mb-0">With Receipts</p>
+                    </div>
+                </div>
+                <div class="text-center mt-3">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle"></i> 
+                        Reports include all claims and items for the selected time period.
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="d-grid">
+                            <a href="{{ url_for('claims_list') }}" class="btn btn-outline-primary">
+                                <i class="bi bi-list-ul"></i> View All Claims
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-grid">
+                            <a href="{{ url_for('new_claim') }}" class="btn btn-success">
+                                <i class="bi bi-plus-circle"></i> New Claim
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const reportTypeSelect = document.getElementById('{{ form.report_type.id }}');
+    const descriptions = document.querySelectorAll('.report-description');
+    
+    function showDescription() {
+        descriptions.forEach(desc => desc.style.display = 'none');
+        const selectedType = reportTypeSelect.value;
+        const targetDesc = document.querySelector(`[data-type="${selectedType}"]`);
+        if (targetDesc) {
+            targetDesc.style.display = 'block';
+        }
+    }
+    
+    // Show initial description
+    showDescription();
+    
+    // Update description when selection changes
+    reportTypeSelect.addEventListener('change', showDescription);
+    
+    // Set current month as default
+    const monthSelect = document.getElementById('{{ form.month.id }}');
+    const currentMonth = new Date().getMonth() + 1;
+    monthSelect.value = currentMonth.toString();
+    
+    // Form submission handling
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const reportType = reportTypeSelect.value;
+        const month = document.getElementById('{{ form.month.id }}').value;
+        const year = document.getElementById('{{ form.year.id }}').value;
+        
+        // Show loading state
+        const submitBtn = document.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Generating...';
+        submitBtn.disabled = true;
+        
+        // Reset button after a delay (in case of errors)
+        setTimeout(function() {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}

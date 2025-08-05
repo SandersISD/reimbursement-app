@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Server Error - Reimbursement System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 mx-auto text-center">
+        <div class="py-5">
+            <i class="bi bi-exclamation-triangle text-danger" style="font-size: 5rem;"></i>
+            <h1 class="display-4 text-muted mt-3">500</h1>
+            <h2 class="mb-4">Internal Server Error</h2>
+            <p class="lead text-muted">
+                Something went wrong on our end. We're working to fix the issue.
+            </p>
+            <div class="mt-4">
+                <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg me-3">
+                    <i class="bi bi-house"></i> Go Home
+                </a>
+                <button onclick="window.location.reload()" class="btn btn-outline-secondary btn-lg">
+                    <i class="bi bi-arrow-clockwise"></i> Try Again
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Troubleshooting Tips -->
+<div class="row mt-5">
+    <div class="col-md-8 mx-auto">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="mb-0"><i class="bi bi-tools"></i> Troubleshooting Tips</h6>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>Try refreshing the page</li>
+                    <li>Go back to the <a href="{{ url_for('index') }}">dashboard</a> and try again</li>
+                    <li>If the problem persists, try creating a <a href="{{ url_for('new_claim') }}">new claim</a></li>
+                    <li>Check if you have any unsaved changes that might have caused the error</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

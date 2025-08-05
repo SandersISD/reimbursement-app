@@ -1,87 +1,251 @@
 {% extends "base.html" %}
 
-{% block title %}Home - Reimbursement System{% endblock %}
+{% block title %}Dashboard - Reimbursement System{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-8">
-        <!-- Hero Section -->
-        <div class="jumbotron bg-light p-5 rounded-3 mb-4">
-            <div class="container-fluid text-center">
-                <h1 class="display-4">💼 Reimbursement Management</h1>
-                <p class="lead">Submit your expense claims quickly and securely</p>
-                <hr class="my-4">
-                <p>Upload receipts, add expense details, and track your reimbursement requests.</p>
-                <a class="btn btn-primary btn-lg" href="{{ url_for('create_claim') }}" role="button">
-                    Start New Claim
-                </a>
-            </div>
+<div class="row">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-speedometer2"></i> Dashboard</h1>
+            <a href="{{ url_for('new_claim') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> New Claim
+            </a>
         </div>
+    </div>
+</div>
 
-        <!-- Feature Cards -->
-        <div class="row">
-            <div class="col-md-4 mb-3">
-                <div class="card h-100">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">📄 Upload Receipts</h5>
-                        <p class="card-text">Securely upload your receipts, invoices, and proof of payment (PDF, JPG, PNG).</p>
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">{{ total_claims }}</h4>
+                        <p class="card-text">Total Claims</p>
                     </div>
-                </div>
-            </div>
-            <div class="col-md-4 mb-3">
-                <div class="card h-100">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">💰 Multiple Currencies</h5>
-                        <p class="card-text">Support for HKD, USD, EUR, GBP, JPY, and CNY currencies.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4 mb-3">
-                <div class="card h-100">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">🗂️ Categorized Expenses</h5>
-                        <p class="card-text">Organize expenses by Travel, Meals, Office Supplies, Training, and more.</p>
+                    <div class="align-self-center">
+                        <i class="bi bi-receipt fs-1"></i>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">{{ recent_claims|length }}</h4>
+                        <p class="card-text">Recent Claims</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-clock-history fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">
+                            {% set total_amount = recent_claims|sum(attribute='total_amount') %}
+                            ${{ "%.2f"|format(total_amount) if total_amount else "0.00" }}
+                        </h4>
+                        <p class="card-text">Recent Total</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-currency-dollar fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">
+                            <a href="{{ url_for('reports') }}" class="text-white text-decoration-none">Reports</a>
+                        </h4>
+                        <p class="card-text">Generate Reports</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-file-earmark-text fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-        <!-- How It Works -->
-        <div class="card mt-4">
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
             <div class="card-header">
-                <h5 class="mb-0">How It Works</h5>
+                <h5 class="mb-0"><i class="bi bi-lightning"></i> Quick Actions</h5>
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-md-4 text-center mb-3">
-                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                            <strong>1</strong>
+                    <div class="col-md-3 mb-3">
+                        <div class="d-grid">
+                            <a href="{{ url_for('new_claim') }}" class="btn btn-outline-primary">
+                                <i class="bi bi-plus-circle"></i><br>
+                                <span class="small">Submit New Claim</span>
+                            </a>
                         </div>
-                        <h6 class="mt-2">Create Claim</h6>
-                        <p class="text-muted">Fill in basic details and upload your receipt</p>
                     </div>
-                    <div class="col-md-4 text-center mb-3">
-                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                            <strong>2</strong>
+                    <div class="col-md-3 mb-3">
+                        <div class="d-grid">
+                            <a href="{{ url_for('claims_list') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-list-ul"></i><br>
+                                <span class="small">View All Claims</span>
+                            </a>
                         </div>
-                        <h6 class="mt-2">Add Items</h6>
-                        <p class="text-muted">Break down your expenses into individual items</p>
                     </div>
-                    <div class="col-md-4 text-center mb-3">
-                        <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                            <strong>3</strong>
+                    <div class="col-md-3 mb-3">
+                        <div class="d-grid">
+                            <a href="{{ url_for('reports') }}" class="btn btn-outline-info">
+                                <i class="bi bi-file-earmark-text"></i><br>
+                                <span class="small">Generate Reports</span>
+                            </a>
                         </div>
-                        <h6 class="mt-2">Submit</h6>
-                        <p class="text-muted">Review and submit your reimbursement claim</p>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="d-grid">
+                            <button class="btn btn-outline-success" onclick="window.location.reload()">
+                                <i class="bi bi-arrow-clockwise"></i><br>
+                                <span class="small">Refresh Dashboard</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
+</div>
 
-        <!-- Quick Stats -->
-        <div class="alert alert-info mt-4" role="alert">
-            <h6 class="alert-heading">💡 Tip</h6>
-            Make sure to keep your original receipts and provide detailed business justifications for faster processing.
+<!-- Recent Claims -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Claims</h5>
+                <a href="{{ url_for('claims_list') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
+                {% if recent_claims %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Claim ID</th>
+                                    <th>Date Range</th>
+                                    <th>Amount</th>
+                                    <th>Purpose</th>
+                                    <th>Items</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for claim in recent_claims %}
+                                    <tr>
+                                        <td>
+                                            <code class="text-muted">{{ claim.claim_id[:8] }}...</code>
+                                        </td>
+                                        <td>
+                                            <small>
+                                                {{ claim.from_date.strftime('%m/%d/%Y') }}
+                                                {% if claim.from_date != claim.to_date %}
+                                                    - {{ claim.to_date.strftime('%m/%d/%Y') }}
+                                                {% endif %}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <strong>{{ claim.total_currency }} {{ "%.2f"|format(claim.total_amount) }}</strong>
+                                        </td>
+                                        <td>
+                                            <span title="{{ claim.business_purpose }}">
+                                                {{ claim.business_purpose[:50] }}{% if claim.business_purpose|length > 50 %}...{% endif %}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary">{{ claim.items|length }} items</span>
+                                        </td>
+                                        <td>
+                                            {% set items_total = claim.items|sum(attribute='amount') %}
+                                            {% set amounts_match = (claim.total_amount - items_total)|abs < 0.01 %}
+                                            {% if amounts_match %}
+                                                <span class="badge bg-success">Complete</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">Incomplete</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{{ url_for('view_claim', claim_id=claim.claim_id) }}" 
+                                                   class="btn btn-outline-primary" title="View">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                                <a href="{{ url_for('edit_claim', claim_id=claim.claim_id) }}" 
+                                                   class="btn btn-outline-secondary" title="Edit">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                <a href="{{ url_for('add_items', claim_id=claim.claim_id) }}" 
+                                                   class="btn btn-outline-info" title="Add Items">
+                                                    <i class="bi bi-plus"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-inbox fs-1 text-muted"></i>
+                        <h4 class="text-muted mt-3">No Claims Yet</h4>
+                        <p class="text-muted">Get started by creating your first reimbursement claim.</p>
+                        <a href="{{ url_for('new_claim') }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> Create First Claim
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Help Section -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <h6 class="mb-0"><i class="bi bi-info-circle"></i> How to Use the Reimbursement System</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <h6><i class="bi bi-1-circle text-primary"></i> Create Claim</h6>
+                        <p class="small text-muted">Start by creating a new claim with expense dates, total amount, and upload your receipt.</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h6><i class="bi bi-2-circle text-primary"></i> Add Items</h6>
+                        <p class="small text-muted">Break down your expenses into individual items with descriptions and categories.</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h6><i class="bi bi-3-circle text-primary"></i> Generate Reports</h6>
+                        <p class="small text-muted">Export your data in various formats for accounting and reimbursement processing.</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>

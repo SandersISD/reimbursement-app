@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block title %}Add Items - Claim {{ claim.claim_id[:8] }}... - Reimbursement System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <!-- Claim Summary Header -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="bi bi-receipt"></i> Claim {{ claim.claim_id[:8] }}...
+                    <span class="badge bg-light text-dark ms-2">{{ claim.total_currency }} {{ "%.2f"|format(claim.total_amount) }}</span>
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>Date Range:</strong><br>
+                        <span class="text-muted">
+                            {{ claim.from_date.strftime('%m/%d/%Y') }}
+                            {% if claim.from_date != claim.to_date %}
+                                - {{ claim.to_date.strftime('%m/%d/%Y') }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Business Purpose:</strong><br>
+                        <span class="text-muted">{{ claim.business_purpose }}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Total Amount:</strong><br>
+                        <span class="h5 text-primary">{{ claim.total_currency }} {{ "%.2f"|format(claim.total_amount) }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Validation Alert -->
+        {% if items %}
+            {% if not amounts_match %}
+                <div class="alert alert-warning alert-validation">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Warning:</strong> Item totals ({{ claim.total_currency }} {{ "%.2f"|format(items_total) }}) 
+                    do not match the claim total ({{ claim.total_currency }} {{ "%.2f"|format(claim.total_amount) }}).
+                    Please review your items.
+                </div>
+            {% else %}
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle"></i>
+                    <strong>Great!</strong> Item totals match the claim total.
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <!-- Add Item Form -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Add New Item</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    
+                    <!-- Description -->
+                    <div class="mb-3">
+                        <label for="{{ form.description.id }}" class="form-label">
+                            {{ form.description.label.text }} <span class="text-danger">*</span>
+                        </label>
+                        {{ form.description(class="form-control") }}
+                        {% if form.description.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.description.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Amount and Currency -->
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="{{ form.amount.id }}" class="form-label">
+                                {{ form.amount.label.text }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.amount(class="form-control", step="0.01", placeholder="0.00") }}
+                            {% if form.amount.errors %}
+                                <div class="text-danger small">
+                                    {% for error in form.amount.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="{{ form.currency.id }}" class="form-label">
+                                {{ form.currency.label.text }}
+                            </label>
+                            {{ form.currency(class="form-select") }}
+                        </div>
+                    </div>
+
+                    <!-- Paid Amount (Optional) -->
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="{{ form.paid_amount.id }}" class="form-label">
+                                {{ form.paid_amount.label.text }}
+                                <small class="text-muted">(Optional)</small>
+                            </label>
+                            {{ form.paid_amount(class="form-control", step="0.01", placeholder="Leave empty if same as amount") }}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="{{ form.paid_currency.id }}" class="form-label">
+                                {{ form.paid_currency.label.text }}
+                            </label>
+                            {{ form.paid_currency(class="form-select") }}
+                        </div>
+                    </div>
+
+                    <!-- Justification -->
+                    <div class="mb-3">
+                        <label for="{{ form.justification.id }}" class="form-label">
+                            {{ form.justification.label.text }}
+                            <small class="text-muted">(Optional)</small>
+                        </label>
+                        {{ form.justification(class="form-control") }}
+                    </div>
+
+                    <!-- Submit Button -->
+                    {{ form.submit(class="btn btn-success w-100") }}
+                </form>
+            </div>
+        </div>
+
+        <!-- Navigation Actions -->
+        <div class="card mt-3">
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('confirmation', claim_id=claim.claim_id) }}" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Finish & Review Claim
+                    </a>
+                    <a href="{{ url_for('view_claim', claim_id=claim.claim_id) }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-eye"></i> View Claim Details
+                    </a>
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-dark">
+                        <i class="bi bi-house"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Items List -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-list-ul"></i> Current Items 
+                    <span class="badge bg-secondary">{{ items|length }}</span>
+                </h5>
+                <div class="text-end">
+                    <small class="text-muted">Total: </small>
+                    <span class="h6 {% if amounts_match %}text-success{% else %}text-warning{% endif %}">
+                        {{ claim.total_currency }} {{ "%.2f"|format(items_total) }}
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if items %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Description</th>
+                                    <th>Amount</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in items %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ item.description }}</strong>
+                                            {% if item.justification %}
+                                                <br><small class="text-muted">{{ item.justification[:50] }}{% if item.justification|length > 50 %}...{% endif %}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark">
+                                                {{ item.currency }} {{ "%.2f"|format(item.amount) }}
+                                            </span>
+                                            {% if item.paid_amount and item.paid_amount != item.amount %}
+                                                <br><small class="text-muted">Paid: {{ item.paid_currency }} {{ "%.2f"|format(item.paid_amount) }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{{ url_for('edit_item', claim_id=claim.claim_id, item_id=item.item_id) }}" 
+                                                   class="btn btn-outline-primary btn-sm" title="Edit">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                <form method="POST" action="{{ url_for('delete_item', claim_id=claim.claim_id, item_id=item.item_id) }}" 
+                                                      style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this item?')">
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-inbox fs-1 text-muted"></i>
+                        <h6 class="text-muted mt-2">No Items Added Yet</h6>
+                        <p class="text-muted small">Start by adding your first expense item using the form on the left.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Tips -->
+        <div class="card mt-3 border-info">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="bi bi-lightbulb"></i> Tips for Adding Items</h6>
+            </div>
+            <div class="card-body">
+                <ul class="small mb-0">
+                    <li>Be specific in descriptions (e.g., "Business lunch with client" vs. "Meal")</li>
+                    <li>Choose the most appropriate expense group for each item</li>
+                    <li>The sum of all items should equal your total claim amount</li>
+                    <li>Use justification for unusual or large expenses</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-fill paid currency when currency changes
+    const currency = document.getElementById('{{ form.currency.id }}');
+    const paidCurrency = document.getElementById('{{ form.paid_currency.id }}');
+    
+    currency.addEventListener('change', function() {
+        if (!document.getElementById('{{ form.paid_amount.id }}').value) {
+            paidCurrency.value = currency.value;
+        }
+    });
+
+    // Set default currency to claim currency
+    currency.value = '{{ claim.total_currency }}';
+    paidCurrency.value = '{{ claim.total_currency }}';
+});
+</script>
+{% endblock %}

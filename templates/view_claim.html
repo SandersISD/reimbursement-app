@@ -1,0 +1,383 @@
+{% extends "base.html" %}
+
+{% block title %}View Claim {{ claim.claim_id[:8] }}... - Reimbursement System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <!-- Breadcrumb -->
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('claims_list') }}">Claims</a></li>
+                <li class="breadcrumb-item active">{{ claim.claim_id[:8] }}...</li>
+            </ol>
+        </nav>
+
+        <!-- Action Buttons -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-receipt"></i> Claim Details</h1>
+            <div class="btn-group">
+                <a href="{{ url_for('edit_claim', claim_id=claim.claim_id) }}" class="btn btn-outline-primary">
+                    <i class="bi bi-pencil"></i> Edit Claim
+                </a>
+                <a href="{{ url_for('add_items', claim_id=claim.claim_id) }}" class="btn btn-outline-info">
+                    <i class="bi bi-plus-circle"></i> Manage Items
+                </a>
+                <a href="{{ url_for('confirmation', claim_id=claim.claim_id) }}" class="btn btn-outline-success">
+                    <i class="bi bi-check-circle"></i> View Summary
+                </a>
+                <button type="button" class="btn btn-outline-danger" onclick="confirmDelete()">
+                    <i class="bi bi-trash"></i> Delete Claim
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Alert -->
+{% if not amounts_match %}
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle"></i>
+        <strong>Warning:</strong> Item totals ({{ claim.total_currency }} {{ "%.2f"|format(items_total) }}) 
+        do not match the claim total ({{ claim.total_currency }} {{ "%.2f"|format(claim.total_amount) }}).
+        <a href="{{ url_for('add_items', claim_id=claim.claim_id) }}" class="alert-link">Review items</a>
+    </div>
+{% else %}
+    <div class="alert alert-success">
+        <i class="bi bi-check-circle"></i>
+        <strong>Complete:</strong> All item amounts add up correctly to the claim total.
+    </div>
+{% endif %}
+
+<div class="row">
+    <!-- Claim Information -->
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-info-circle"></i> Claim Information
+                    <span class="badge bg-light text-dark ms-2">
+                        ID: {{ claim.claim_id[:8] }}...
+                    </span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <th width="40%">Claim ID:</th>
+                                <td>
+                                    <code>{{ claim.claim_id }}</code>
+                                    <button class="btn btn-sm btn-outline-secondary ms-2" 
+                                            onclick="copyToClipboard('{{ claim.claim_id }}')" title="Copy to clipboard">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% if claim.alias_name %}
+                            <tr>
+                                <th>Alias Name:</th>
+                                <td><strong class="text-success">{{ claim.alias_name }}</strong></td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <th>Expense Group:</th>
+                                <td><span class="badge bg-primary">{{ claim.expense_group }}</span></td>
+                            </tr>
+                            <tr>
+                                <th>Date Range:</th>
+                                <td>
+                                    <strong>{{ claim.from_date.strftime('%B %d, %Y') }}</strong>
+                                    {% if claim.from_date != claim.to_date %}
+                                        <br><small class="text-muted">to {{ claim.to_date.strftime('%B %d, %Y') }}</small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Total Amount:</th>
+                                <td class="h5 text-primary">{{ claim.total_currency }} {{ "%.2f"|format(claim.total_amount) }}</td>
+                            </tr>
+                            {% if claim.paid_amount and claim.paid_amount != claim.total_amount %}
+                            <tr>
+                                <th>Paid Amount:</th>
+                                <td class="h6 text-info">{{ claim.paid_currency }} {{ "%.2f"|format(claim.paid_amount) }}</td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <th>Created:</th>
+                                <td>{{ claim.created_at.strftime('%B %d, %Y at %I:%M %p') }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Business Purpose:</h6>
+                        <div class="border rounded p-3 bg-light">
+                            {{ claim.business_purpose }}
+                        </div>
+                        
+                        <h6 class="mt-3">Receipt:</h6>
+                        {% if claim.upload_file_path %}
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-file-earmark-check text-success fs-4 me-2"></i>
+                                <div>
+                                    <span class="text-success">File uploaded successfully</span>
+                                    <br><small class="text-muted">{{ claim.upload_file_path.split('/')[-1] }}</small>
+                                </div>
+                            </div>
+                        {% else %}
+                            <span class="text-warning">
+                                <i class="bi bi-exclamation-triangle"></i> No receipt uploaded
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Items List -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-list-ul"></i> Expense Items 
+                    <span class="badge bg-secondary">{{ items|length }}</span>
+                </h5>
+                <div>
+                    <span class="text-muted">Items Total: </span>
+                    <span class="h6 {% if amounts_match %}text-success{% else %}text-warning{% endif %}">
+                        {{ claim.total_currency }} {{ "%.2f"|format(items_total) }}
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if items %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="5%">#</th>
+                                    <th width="35%">Description</th>
+                                    <th width="20%">Amount</th>
+                                    <th width="25%">Justification</th>
+                                    <th width="15%">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in items %}
+                                    <tr>
+                                        <td>{{ loop.index }}</td>
+                                        <td>
+                                            <strong>{{ item.description }}</strong>
+                                            <br><small class="text-muted">Added {{ item.created_at.strftime('%m/%d/%Y %I:%M %p') }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark">
+                                                {{ item.currency }} {{ "%.2f"|format(item.amount) }}
+                                            </span>
+                                            {% if item.paid_amount and item.paid_amount != item.amount %}
+                                                <br><small class="text-muted">
+                                                    Paid: {{ item.paid_currency }} {{ "%.2f"|format(item.paid_amount) }}
+                                                </small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.justification %}
+                                                <small class="text-muted">{{ item.justification }}</small>
+                                            {% else %}
+                                                <small class="text-muted fst-italic">No justification provided</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{{ url_for('edit_item', claim_id=claim.claim_id, item_id=item.item_id) }}" 
+                                                   class="btn btn-outline-primary" title="Edit Item">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                <form method="POST" action="{{ url_for('delete_item', claim_id=claim.claim_id, item_id=item.item_id) }}" 
+                                                      style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this item?')">
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete Item">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-light">
+                                <tr>
+                                    <th colspan="2">Total</th>
+                                    <th>
+                                        <span class="{% if amounts_match %}text-success{% else %}text-warning{% endif %}">
+                                            {{ claim.total_currency }} {{ "%.2f"|format(items_total) }}
+                                        </span>
+                                    </th>
+                                    <th colspan="3">
+                                        {% if not amounts_match %}
+                                            <small class="text-warning">
+                                                <i class="bi bi-exclamation-triangle"></i> 
+                                                Difference: {{ claim.total_currency }} {{ "%.2f"|format((claim.total_amount - items_total)|abs) }}
+                                            </small>
+                                        {% endif %}
+                                    </th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-inbox fs-1 text-muted"></i>
+                        <h6 class="text-muted mt-2">No Items Added Yet</h6>
+                        <p class="text-muted">This claim doesn't have any individual expense items.</p>
+                        <a href="{{ url_for('add_items', claim_id=claim.claim_id) }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> Add First Item
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-md-4">
+        <!-- Quick Actions -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-lightning"></i> Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('edit_claim', claim_id=claim.claim_id) }}" class="btn btn-outline-primary">
+                        <i class="bi bi-pencil"></i> Edit Claim Details
+                    </a>
+                    <a href="{{ url_for('add_items', claim_id=claim.claim_id) }}" class="btn btn-outline-info">
+                        <i class="bi bi-plus-circle"></i> Add New Item
+                    </a>
+                    <hr>
+                    <a href="{{ url_for('confirmation', claim_id=claim.claim_id) }}" class="btn btn-outline-success">
+                        <i class="bi bi-check-circle"></i> View Summary
+                    </a>
+                    <a href="{{ url_for('claims_list') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-list-ul"></i> All Claims
+                    </a>
+                    <a href="{{ url_for('new_claim') }}" class="btn btn-success">
+                        <i class="bi bi-plus-square"></i> New Claim
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Statistics -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Summary</h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h4 class="text-primary">{{ items|length }}</h4>
+                        <small class="text-muted">Items</small>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-info">1</h4>
+                        <small class="text-muted">Category</small>
+                    </div>
+                </div>
+                
+                <hr class="my-3">
+                <h6 class="small text-muted">Expense Category:</h6>
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="badge bg-primary">{{ claim.expense_group }}</span>
+                    <small class="text-muted">{{ claim.total_currency }} {{ "%.2f"|format(claim.total_amount) }}</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Card -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-shield-check"></i> Status</h6>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>Receipt Uploaded</span>
+                        {% if claim.upload_file_path %}
+                            <span class="badge bg-success">Yes</span>
+                        {% else %}
+                            <span class="badge bg-warning">No</span>
+                        {% endif %}
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>Items Added</span>
+                        {% if items %}
+                            <span class="badge bg-success">{{ items|length }}</span>
+                        {% else %}
+                            <span class="badge bg-warning">0</span>
+                        {% endif %}
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>Amount Validation</span>
+                        {% if amounts_match %}
+                            <span class="badge bg-success">Match</span>
+                        {% else %}
+                            <span class="badge bg-warning">Mismatch</span>
+                        {% endif %}
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>Overall Status</span>
+                        {% if claim.upload_file_path and items and amounts_match %}
+                            <span class="badge bg-success">Complete</span>
+                        {% else %}
+                            <span class="badge bg-warning">Incomplete</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        // Show success message
+        const btn = event.target.closest('button');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check"></i>';
+        btn.classList.remove('btn-outline-secondary');
+        btn.classList.add('btn-success');
+        
+        setTimeout(function() {
+            btn.innerHTML = originalHTML;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-secondary');
+        }, 2000);
+    });
+}
+
+function confirmDelete() {
+    if (confirm('Are you sure you want to delete this claim? This action cannot be undone and will delete all associated items and files.')) {
+        // Create and submit delete form
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("delete_claim", claim_id=claim.claim_id) }}';
+        form.style.display = 'none';
+        
+        // Add CSRF token
+        const csrfToken = document.querySelector('meta[name=csrf-token]');
+        if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrf_token';
+            csrfInput.value = csrfToken.getAttribute('content');
+            form.appendChild(csrfInput);
+        }
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}
