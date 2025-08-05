@@ -1,6 +1,16 @@
-# Reimbursement Management System
+# ⚠️ !!! Disclaimer !!! ⚠️
+**This application is doing PURELY by AI within one single day.**  
+**Very likely it will encounter numourous bugs that I dont recognise nor understand**.  
+**Use at your own risk**.
 
-A web application for managing employee reimbursement claims with Excel report generation.
+# ISD Reimbursement Management Helper
+
+A web application for managing employee reimbursement claims with Excel report generation.  
+Key features include:  
+- Web UI for user-friendly Data Entry
+- Verifier for the sum of individual items of each claim
+- One click ISD Reimbursement Form generation
+- Ordered tables for FO Expense Form manual entry
 
 ## Installation
 
